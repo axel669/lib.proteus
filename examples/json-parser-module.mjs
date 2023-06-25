@@ -2,6 +2,9 @@ const iden = i => i
 
 const none = Symbol("none")
 
+let state = null
+let opt = null
+
 const consumeString = (pattern, input, pos) => {
     if (input.substr(pos, pattern.length) === pattern) {
         return [pos + pattern.length, pattern]
@@ -17,7 +20,28 @@ const consumeRegex = (pattern, input, pos) => {
     return [pattern.lastIndex, match?.[0] ?? null]
 }
 
-let last = null
+let last = 0
+let lastRule = null
+let currentRule = null
+const location = (pos) => {
+    if (pos < last) {
+        return
+    }
+    last = pos
+    lastRule = currentRule
+}
+const linePosition = (input, pos) => {
+    let line = 0
+    let next = 0
+    while (next < pos && next !== -1) {
+        line += 1
+        next = input.indexOf("\n", next + 1)
+    }
+    return {
+        line,
+        col: pos - input.lastIndexOf("\n", pos)
+    }
+}
 const $parse_repeat2 = (input, pos) => {
     const results = []
     let loc = pos
@@ -26,19 +50,19 @@ const $parse_repeat2 = (input, pos) => {
     while (true) {
         const partial = []
         ;[loc, match] = consumeRegex(/s*/y, input, loc)
-        if (match === none) { last = pos; break }
+        if (match === none) { location(pos); break }
         partial.push(match)
 
         ;[loc, match] = consumeString(",", input, loc)
-        if (match === none) { last = pos; break }
+        if (match === none) { location(pos); break }
         partial.push(match)
 
         ;[loc, match] = consumeRegex(/\s*/y, input, loc)
-        if (match === none) { last = pos; break }
+        if (match === none) { location(pos); break }
         partial.push(match)
 
         ;[loc, match] = parse_value(input, loc)
-        if (match === none) { last = pos; break }
+        if (match === none) { location(pos); break }
         partial.push(match)
 
         results.push(partial)
@@ -55,15 +79,15 @@ const $parse_opt1 = (input, pos) => {
 
     ;[loc, match] = parse_value(input, loc)
     results.push(match)
-    if (match === none) { last = pos; return [pos, null] }
+    if (match === none) { location(pos); return [pos, null] }
 
     ;[loc, match] = consumeRegex(/s*/y, input, loc)
     results.push(match)
-    if (match === none) { last = pos; return [pos, null] }
+    if (match === none) { location(pos); return [pos, null] }
 
     ;[loc, match] = $parse_repeat2(input, loc)
     results.push(match)
-    if (match === none) { last = pos; return [pos, null] }
+    if (match === none) { location(pos); return [pos, null] }
 
     return [loc, results]
 }
@@ -75,19 +99,19 @@ const $parse_repeat4 = (input, pos) => {
     while (true) {
         const partial = []
         ;[loc, match] = consumeRegex(/s*/y, input, loc)
-        if (match === none) { last = pos; break }
+        if (match === none) { location(pos); break }
         partial.push(match)
 
         ;[loc, match] = consumeString(",", input, loc)
-        if (match === none) { last = pos; break }
+        if (match === none) { location(pos); break }
         partial.push(match)
 
         ;[loc, match] = consumeRegex(/\s*/y, input, loc)
-        if (match === none) { last = pos; break }
+        if (match === none) { location(pos); break }
         partial.push(match)
 
         ;[loc, match] = parse_kvpair(input, loc)
-        if (match === none) { last = pos; break }
+        if (match === none) { location(pos); break }
         partial.push(match)
 
         results.push(partial)
@@ -104,15 +128,15 @@ const $parse_opt3 = (input, pos) => {
 
     ;[loc, match] = parse_kvpair(input, loc)
     results.push(match)
-    if (match === none) { last = pos; return [pos, null] }
+    if (match === none) { location(pos); return [pos, null] }
 
     ;[loc, match] = consumeRegex(/s*/y, input, loc)
     results.push(match)
-    if (match === none) { last = pos; return [pos, null] }
+    if (match === none) { location(pos); return [pos, null] }
 
     ;[loc, match] = $parse_repeat4(input, loc)
     results.push(match)
-    if (match === none) { last = pos; return [pos, null] }
+    if (match === none) { location(pos); return [pos, null] }
 
     return [loc, results]
 }
@@ -150,11 +174,13 @@ const parse_number = (input, pos) => {
     let loc = pos
     let match = null
 
+    currentRule = "number"
+
     ;[loc, match] = consumeRegex(/\d+(\.\d+(e(\+|\-)\d+)?)?/iy, input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    return [loc, action_number(results)]
+    return [loc, action_number(results, state, opt)]
 }
 const action_string = actions["string"] ?? iden
 const parse_string = (input, pos) => {
@@ -162,11 +188,13 @@ const parse_string = (input, pos) => {
     let loc = pos
     let match = null
 
+    currentRule = "string"
+
     ;[loc, match] = consumeRegex(/"(\\"|[^"])*"/y, input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    return [loc, action_string(results)]
+    return [loc, action_string(results, state, opt)]
 }
 const action_true = actions["true"] ?? iden
 const parse_true = (input, pos) => {
@@ -174,11 +202,13 @@ const parse_true = (input, pos) => {
     let loc = pos
     let match = null
 
+    currentRule = "true"
+
     ;[loc, match] = consumeString("true", input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    return [loc, action_true(results)]
+    return [loc, action_true(results, state, opt)]
 }
 const action_false = actions["false"] ?? iden
 const parse_false = (input, pos) => {
@@ -186,11 +216,13 @@ const parse_false = (input, pos) => {
     let loc = pos
     let match = null
 
+    currentRule = "false"
+
     ;[loc, match] = consumeString("false", input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    return [loc, action_false(results)]
+    return [loc, action_false(results, state, opt)]
 }
 const action_null = actions["null"] ?? iden
 const parse_null = (input, pos) => {
@@ -198,11 +230,13 @@ const parse_null = (input, pos) => {
     let loc = pos
     let match = null
 
+    currentRule = "null"
+
     ;[loc, match] = consumeString("null", input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    return [loc, action_null(results)]
+    return [loc, action_null(results, state, opt)]
 }
 const action_array = actions["array"] ?? iden
 const parse_array = (input, pos) => {
@@ -210,27 +244,29 @@ const parse_array = (input, pos) => {
     let loc = pos
     let match = null
 
+    currentRule = "array"
+
     ;[loc, match] = consumeString("[", input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = consumeRegex(/\s*/y, input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = $parse_opt1(input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = consumeRegex(/\s*/y, input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = consumeString("]", input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    return [loc, action_array(results)]
+    return [loc, action_array(results, state, opt)]
 }
 const action_object = actions["object"] ?? iden
 const parse_object = (input, pos) => {
@@ -238,27 +274,29 @@ const parse_object = (input, pos) => {
     let loc = pos
     let match = null
 
+    currentRule = "object"
+
     ;[loc, match] = consumeString("{", input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = consumeRegex(/\s*/y, input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = $parse_opt3(input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = consumeRegex(/\s*/y, input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = consumeString("}", input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    return [loc, action_object(results)]
+    return [loc, action_object(results, state, opt)]
 }
 const action_kvpair = actions["kvpair"] ?? iden
 const parse_kvpair = (input, pos) => {
@@ -266,27 +304,29 @@ const parse_kvpair = (input, pos) => {
     let loc = pos
     let match = null
 
+    currentRule = "kvpair"
+
     ;[loc, match] = parse_string(input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = consumeRegex(/\s*/y, input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = consumeString(":", input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = consumeRegex(/\s*/y, input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
     ;[loc, match] = parse_value(input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    return [loc, action_kvpair(results)]
+    return [loc, action_kvpair(results, state, opt)]
 }
 const action_value = actions["value"] ?? iden
 const parse_value = (input, pos) => {
@@ -294,17 +334,57 @@ const parse_value = (input, pos) => {
     let loc = pos
     let match = null
 
+    currentRule = "value"
+
     ;[loc, match] = $parse_or5(input, loc)
-    if (match === none) { last = pos; return [pos, none] }
+    if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    return [loc, action_value(results)]
+    return [loc, action_value(results, state, opt)]
 }
-export default (input) => {
-    const [index, value] = parse_value(input, 0)
+const action_json = actions["json"] ?? iden
+const parse_json = (input, pos) => {
+    const results = []
+    let loc = pos
+    let match = null
+
+    currentRule = "json"
+
+    ;[loc, match] = consumeRegex(/\s*/y, input, loc)
+    if (match === none) { location(pos); return [pos, none] }
+    results.push(match)
+
+    ;[loc, match] = parse_value(input, loc)
+    if (match === none) { location(pos); return [pos, none] }
+    results.push(match)
+
+    ;[loc, match] = consumeRegex(/\s*/y, input, loc)
+    if (match === none) { location(pos); return [pos, none] }
+    results.push(match)
+
+    return [loc, action_json(results, state, opt)]
+}
+export default (input, options) => {
+    last = 0
+    opt = options
+    state = {
+    }
+    const [index, value] = parse_json(input, 0)
     if (index !== input.length) {
         if (value === none) {
-            return new Error(`Got to pos ${last} before failure`)
+            const pos = linePosition(input, last)
+            const error = new Error(`
+            Parser failed at line ${pos.line}, col ${pos.col}.
+            -> Expected ${lastRule} but got ${JSON.stringify(input.at(last))}.
+            `
+            .trim()
+            .replace(/^\s/mg, "")
+            )
+            error.input = input
+            error.position = pos
+            error.index = last
+
+            return error
         }
         return new Error("Expected EOF got not that dingus")
     }

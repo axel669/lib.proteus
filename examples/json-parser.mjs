@@ -1,7 +1,9 @@
-import { Parser, Rule } from "../main.mjs"
+import fs from "fs-jetpack"
+
+import { Parser, Rule } from "../lib/main.mjs"
 
 const json = Parser(
-    { start: Rule.value },
+    { start: Rule.json },
     Rule`number`(
         /\d+(\.\d+(e(\+|\-)\d+)?)?/i,
         ([n]) => parseFloat(n)
@@ -93,6 +95,12 @@ const json = Parser(
             [Rule.object],
         ),
         ([value]) => value
+    ),
+    Rule`json`(
+        /\s*/,
+        Rule.value,
+        /\s*/,
+        ([, value]) => value
     )
 )
 
@@ -104,8 +112,21 @@ const obj = [
     [ false ],
     { a: [ "b" ] }
 ]
-const input = JSON.stringify(obj, null, 2)
-console.log(input)
+const valid = JSON.stringify(obj, null, 2) + "  "
 console.log(
-    json.parse(input)
+    json.parse(valid)
 )
+
+const invalid = `[
+    1,
+    2,
+    3,
+    null,
+    [ false ],
+    { a: [ "b" ] }
+]`
+console.log(
+    json.parse(invalid)
+)
+
+fs.write("examples/json-parser-module.mjs", json.module)
