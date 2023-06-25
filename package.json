@@ -2,11 +2,19 @@
   "name": "lib.proteus",
   "version": "0.1.0",
   "description": "",
-  "main": "main.mjs",
+  "main": "lib/main.mjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "rollup -c config/rollup.config.mjs"
   },
   "keywords": [],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "fs-jetpack": "^5.1.0",
+    "rollup": "^3.25.2"
+  },
+  "files": [
+    "lib/",
+    "browser"
+  ]
 }
