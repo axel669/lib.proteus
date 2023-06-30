@@ -5,8 +5,8 @@ import { Parser, Rule } from "../lib/main.mjs"
 const json = Parser(
     { start: Rule.json },
     Rule`number`(
-        /\d+(\.\d+(e(\+|\-)\d+)?)?/i,
-        ([n]) => parseFloat(n)
+        { num: /\d+(\.\d+(e(\+|\-)\d+)?)?/i },
+        ({ num }) => parseFloat(num)
     ),
     Rule`string`(
         /"(\\"|[^"])*"/,
@@ -27,7 +27,7 @@ const json = Parser(
     Rule`array`(
         "[",
         /\s*/,
-        Rule.$opt(
+        { info: Rule.$opt(
             Rule.value,
             /s*/,
             Rule.$repeat(
@@ -37,10 +37,10 @@ const json = Parser(
                 /\s*/,
                 Rule.value
             )
-        ),
+        ) },
         /\s*/,
         "]",
-        ([, , info]) =>
+        ({ info }) =>
             (info === null)
                 ? []
                 : [
@@ -53,7 +53,7 @@ const json = Parser(
     Rule`object`(
         "{",
         /\s*/,
-        Rule.$opt(
+        { info: Rule.$opt(
             Rule.kvpair,
             /s*/,
             Rule.$repeat(
@@ -63,10 +63,10 @@ const json = Parser(
                 /\s*/,
                 Rule.kvpair
             )
-        ),
+        ) },
         /\s*/,
         "}",
-        ([, , info]) =>
+        ({ info }) =>
             (info === null)
                 ? []
                 : Object.fromEntries([
@@ -77,12 +77,12 @@ const json = Parser(
                 ])
     ),
     Rule`kvpair`(
-        Rule.string,
+        { key: Rule.string },
         /\s*/,
         ":",
         /\s*/,
-        Rule.value,
-        ([key, , , , value]) => [key, value]
+        { value: Rule.value },
+        ({ key, value }) => [key, value]
     ),
     Rule`value`(
         Rule.$or(
@@ -98,11 +98,13 @@ const json = Parser(
     ),
     Rule`json`(
         /\s*/,
-        Rule.value,
+        { value: Rule.value },
         /\s*/,
-        ([, value]) => value
+        ({ value }) => value
     )
 )
+
+fs.write("examples/json-parser-module.mjs", json.module)
 
 const obj = [
     1,
@@ -128,5 +130,3 @@ const invalid = `[
 console.log(
     json.parse(invalid)
 )
-
-fs.write("examples/json-parser-module.mjs", json.module)

@@ -1,5 +1,3 @@
-const iden = i => i
-
 const none = Symbol("none")
 
 let state = null
@@ -168,7 +166,7 @@ const $parse_or5 = (input, pos) => {
     return [pos, none]
 }
 
-const action_number = actions["number"] ?? iden
+const action_number = ({ num }) => parseFloat(num)
 const parse_number = (input, pos) => {
     const results = []
     let loc = pos
@@ -179,10 +177,11 @@ const parse_number = (input, pos) => {
     ;[loc, match] = consumeRegex(/\d+(\.\d+(e(\+|\-)\d+)?)?/iy, input, loc)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
+    results.num = match
 
     return [loc, action_number(results, state, opt)]
 }
-const action_string = actions["string"] ?? iden
+const action_string = ([str]) => JSON.parse(str)
 const parse_string = (input, pos) => {
     const results = []
     let loc = pos
@@ -196,7 +195,7 @@ const parse_string = (input, pos) => {
 
     return [loc, action_string(results, state, opt)]
 }
-const action_true = actions["true"] ?? iden
+const action_true = () => true
 const parse_true = (input, pos) => {
     const results = []
     let loc = pos
@@ -210,7 +209,7 @@ const parse_true = (input, pos) => {
 
     return [loc, action_true(results, state, opt)]
 }
-const action_false = actions["false"] ?? iden
+const action_false = () => false
 const parse_false = (input, pos) => {
     const results = []
     let loc = pos
@@ -224,7 +223,7 @@ const parse_false = (input, pos) => {
 
     return [loc, action_false(results, state, opt)]
 }
-const action_null = actions["null"] ?? iden
+const action_null = () => null
 const parse_null = (input, pos) => {
     const results = []
     let loc = pos
@@ -238,7 +237,15 @@ const parse_null = (input, pos) => {
 
     return [loc, action_null(results, state, opt)]
 }
-const action_array = actions["array"] ?? iden
+const action_array = ({ info }) =>
+(info === null)
+? []
+: [
+info[0],
+...info[2].map(
+item => item[3]
+)
+]
 const parse_array = (input, pos) => {
     const results = []
     let loc = pos
@@ -257,6 +264,7 @@ const parse_array = (input, pos) => {
     ;[loc, match] = $parse_opt1(input, loc)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
+    results.info = match
 
     ;[loc, match] = consumeRegex(/\s*/y, input, loc)
     if (match === none) { location(pos); return [pos, none] }
@@ -268,7 +276,15 @@ const parse_array = (input, pos) => {
 
     return [loc, action_array(results, state, opt)]
 }
-const action_object = actions["object"] ?? iden
+const action_object = ({ info }) =>
+(info === null)
+? []
+: Object.fromEntries([
+info[0],
+...info[2].map(
+item => item[3]
+)
+])
 const parse_object = (input, pos) => {
     const results = []
     let loc = pos
@@ -287,6 +303,7 @@ const parse_object = (input, pos) => {
     ;[loc, match] = $parse_opt3(input, loc)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
+    results.info = match
 
     ;[loc, match] = consumeRegex(/\s*/y, input, loc)
     if (match === none) { location(pos); return [pos, none] }
@@ -298,7 +315,7 @@ const parse_object = (input, pos) => {
 
     return [loc, action_object(results, state, opt)]
 }
-const action_kvpair = actions["kvpair"] ?? iden
+const action_kvpair = ({ key, value }) => [key, value]
 const parse_kvpair = (input, pos) => {
     const results = []
     let loc = pos
@@ -309,6 +326,7 @@ const parse_kvpair = (input, pos) => {
     ;[loc, match] = parse_string(input, loc)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
+    results.key = match
 
     ;[loc, match] = consumeRegex(/\s*/y, input, loc)
     if (match === none) { location(pos); return [pos, none] }
@@ -325,10 +343,11 @@ const parse_kvpair = (input, pos) => {
     ;[loc, match] = parse_value(input, loc)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
+    results.value = match
 
     return [loc, action_kvpair(results, state, opt)]
 }
-const action_value = actions["value"] ?? iden
+const action_value = ([value]) => value
 const parse_value = (input, pos) => {
     const results = []
     let loc = pos
@@ -342,7 +361,7 @@ const parse_value = (input, pos) => {
 
     return [loc, action_value(results, state, opt)]
 }
-const action_json = actions["json"] ?? iden
+const action_json = ({ value }) => value
 const parse_json = (input, pos) => {
     const results = []
     let loc = pos
@@ -357,6 +376,7 @@ const parse_json = (input, pos) => {
     ;[loc, match] = parse_value(input, loc)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
+    results.value = match
 
     ;[loc, match] = consumeRegex(/\s*/y, input, loc)
     if (match === none) { location(pos); return [pos, none] }
@@ -383,6 +403,7 @@ export default (input, options) => {
             error.input = input
             error.position = pos
             error.index = last
+            error.rule = lastRule
 
             return error
         }
