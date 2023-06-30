@@ -8,12 +8,13 @@ const Token = {
     opt: Symbol("opt"),
     repeat: Symbol("repeat"),
     or: Symbol("or"),
+    marked: Symbol("token")
 };
 
 const tokenRepeat = ({ count, tokens }, parsers) => {
     const name = `$parse_repeat${id()}`;
     const looped = tokens.map(
-        (item) => tokenStep({ loop: true, item }, parsers)
+        (item) => tokenStep({ [Token.marked]: true, loop: true, item }, parsers)
     ).join("\n\n");
 
     parsers[Symbol.for(name)] = `(input, pos) => {
@@ -89,7 +90,7 @@ const tokenOpt = ({ tokens }, parsers, target) => {
 
         ${tokens.map(
         token => `
-            ${tokenStep({ opt: true, item: token }, parsers)}
+            ${tokenStep({ [Token.marked]: true, opt: true, item: token }, parsers)}
             if (match === none) { location(pos); return [pos, null] }
         `
     ).join("\n\n")}
@@ -128,6 +129,8 @@ const tokenAction = (token, parsers) => {
         const name = Symbol.keyFor(item);
         return `parse_${name}(input, loc)`
     }
+
+    console.log("failed action:", token);
 };
 const tokenReaction = (token) => {
     if (token.opt === true) {
@@ -138,20 +141,42 @@ const tokenReaction = (token) => {
     }
     return "if (match === none) { location(pos); return [pos, none] }"
 };
-const tokenStep = (token, parsers) => {
+const tokenStep = (tokenInfo, parsers) => {
+    const [name, token] =
+        (tokenInfo.constructor === Object && tokenInfo[Token.marked] !== true)
+        ? Object.entries(tokenInfo)[0]
+        : [null, tokenInfo];
     const target = token.loop === true ? "partial" : "results";
 
     const action = tokenAction(token, parsers);
     const early = tokenReaction(token);
     const step = `;[loc, match] = ${action}\n${early}`.trim();
+    const named = (name === null) ? "" : `${target}.${name} = match`;
 
-    return `${step}\n${target}.push(match)`
+    return `
+        ${step}
+        ${target}.push(match)
+        ${named}
+    `.trim()
 };
 
 const helper = {
-    $repeat: (num, ...tokens) => ({ [Token.repeat]: true, count: num, tokens }),
-    $opt: (...tokens) => ({ [Token.opt]: true, tokens }),
-    $or: (...tokens) => ({ [Token.or]: true, tokens }),
+    $repeat: (num, ...tokens) => ({
+        [Token.marked]: true,
+        [Token.repeat]: true,
+        count: num,
+        tokens
+    }),
+    $opt: (...tokens) => ({
+        [Token.marked]: true,
+        [Token.opt]: true,
+        tokens
+    }),
+    $or: (...tokens) => ({
+        [Token.marked]: true,
+        [Token.or]: true,
+        tokens
+    }),
 };
 
 const Rule = new Proxy(
@@ -193,8 +218,6 @@ const Rule = new Proxy(
 );
 
 const parseHeader = `
-const iden = i => i
-
 const none = Symbol("none")
 
 let state = null
@@ -278,7 +301,8 @@ const formatCode = (code) => {
     )
 };
 
-const compileParser = (parsers, entry) => {
+const compileParser = (parsers, entry, actions) => {
+    const iden = i => i;
     return [
         formatCode(`
             ${parseHeader}
@@ -288,7 +312,7 @@ const compileParser = (parsers, entry) => {
 
             ${Object.entries(parsers).map(
                 ([name, code]) => `
-                    const action_${name} = actions["${name}"] ?? iden
+                    const action_${name} = ${(actions[name] ?? iden).toString()}
                     const parse_${name} = ${code}
                 `.trim()
             ).join("\n")}
@@ -324,6 +348,10 @@ const compileParser = (parsers, entry) => {
     ]
 };
 
+/*md
+*/
+
+
 const parser = (options, ...rules) => {
     const parsers = {};
     const actions = {};
@@ -334,16 +362,16 @@ const parser = (options, ...rules) => {
 
     const parserSource = compileParser(
         parsers,
-        Symbol.keyFor(options.start)
+        Symbol.keyFor(options.start),
+        actions
     );
     const genSource = parserSource.join("\nreturn ");
     const generateParser = new Function(
-        "actions",
         genSource
     );
 
     return {
-        parse: generateParser(actions),
+        parse: generateParser(),
         source: genSource,
         module: parserSource.join("\nexport default ")
     }
