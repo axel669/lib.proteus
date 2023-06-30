@@ -54,7 +54,7 @@ const $parse_repeat1 = (input, pos) => {
         partial.push(match)
 
         const partialValue = partial
-        if ($condition2(partialValue) !== true) {
+        if ($condition2(partialValue, state) !== true) {
             loc = startLoc
             break
         }

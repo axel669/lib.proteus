@@ -23,7 +23,7 @@ var proteus = (function (exports) {
         parsers[Symbol.for(name)] = condition.toString();
 
         return `
-        if (${name}(partialValue) !== true) {
+        if (${name}(partialValue, state) !== true) {
             loc = startLoc
             break
         }
