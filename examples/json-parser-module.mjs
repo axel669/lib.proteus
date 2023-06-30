@@ -46,6 +46,7 @@ const $parse_repeat2 = (input, pos) => {
     let match = null
 
     while (true) {
+        const startLoc = loc
         const partial = []
         ;[loc, match] = consumeRegex(/s*/y, input, loc)
         if (match === none) { location(pos); break }
@@ -63,7 +64,9 @@ const $parse_repeat2 = (input, pos) => {
         if (match === none) { location(pos); break }
         partial.push(match)
 
-        results.push(partial)
+        const partialValue = partial
+
+        results.push(partialValue)
     }
     if (results.length < 0) {
         return [pos, none]
@@ -95,6 +98,7 @@ const $parse_repeat4 = (input, pos) => {
     let match = null
 
     while (true) {
+        const startLoc = loc
         const partial = []
         ;[loc, match] = consumeRegex(/s*/y, input, loc)
         if (match === none) { location(pos); break }
@@ -112,7 +116,9 @@ const $parse_repeat4 = (input, pos) => {
         if (match === none) { location(pos); break }
         partial.push(match)
 
-        results.push(partial)
+        const partialValue = partial
+
+        results.push(partialValue)
     }
     if (results.length < 0) {
         return [pos, none]
