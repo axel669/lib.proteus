@@ -40,7 +40,7 @@ const linePosition = (input, pos) => {
         col: pos - input.lastIndexOf("\n", pos)
     }
 }
-const $parse_repeat2 = (input, pos) => {
+const $parse_repeat2 = (input, pos, parentResults) => {
     const results = []
     let loc = pos
     let match = null
@@ -86,13 +86,13 @@ const $parse_opt1 = (input, pos) => {
     results.push(match)
     if (match === none) { location(pos); return [pos, null] }
 
-    ;[loc, match] = $parse_repeat2(input, loc)
+    ;[loc, match] = $parse_repeat2(input, loc, results)
     results.push(match)
     if (match === none) { location(pos); return [pos, null] }
 
     return [loc, results]
 }
-const $parse_repeat4 = (input, pos) => {
+const $parse_repeat4 = (input, pos, parentResults) => {
     const results = []
     let loc = pos
     let match = null
@@ -138,7 +138,7 @@ const $parse_opt3 = (input, pos) => {
     results.push(match)
     if (match === none) { location(pos); return [pos, null] }
 
-    ;[loc, match] = $parse_repeat4(input, loc)
+    ;[loc, match] = $parse_repeat4(input, loc, results)
     results.push(match)
     if (match === none) { location(pos); return [pos, null] }
 
@@ -413,7 +413,12 @@ export default (input, options) => {
 
             return error
         }
-        return new Error("Expected EOF got not that dingus")
+        const error = new Error("Expected EOF got not that dingus")
+        error.index = index
+        error.parsed = input.slice(0, index)
+        error.remaining = input.slice(index)
+        error.result = value
+        return error
     }
 
     return value

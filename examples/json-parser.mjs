@@ -2,29 +2,29 @@ import fs from "fs-jetpack"
 
 import { Parser, Rule } from "../lib/main.mjs"
 
-const json = Parser(
-    { start: Rule.json },
-    Rule`number`(
+const json = Parser({
+    [Parser.start]: Rule.json,
+    number: Rule(
         { num: /\d+(\.\d+(e(\+|\-)\d+)?)?/i },
         ({ num }) => parseFloat(num)
     ),
-    Rule`string`(
+    string: Rule(
         /"(\\"|[^"])*"/,
         ([str]) => JSON.parse(str)
     ),
-    Rule`true`(
+    true: Rule(
         "true",
         () => true
     ),
-    Rule`false`(
+    false: Rule(
         "false",
         () => false
     ),
-    Rule`null`(
+    null: Rule(
         "null",
         () => null
     ),
-    Rule`array`(
+    array: Rule(
         "[",
         /\s*/,
         { info: Rule.$opt(
@@ -50,7 +50,7 @@ const json = Parser(
                     )
                 ]
     ),
-    Rule`object`(
+    object: Rule(
         "{",
         /\s*/,
         { info: Rule.$opt(
@@ -76,7 +76,7 @@ const json = Parser(
                     )
                 ])
     ),
-    Rule`kvpair`(
+    kvpair: Rule(
         { key: Rule.string },
         /\s*/,
         ":",
@@ -84,7 +84,7 @@ const json = Parser(
         { value: Rule.value },
         ({ key, value }) => [key, value]
     ),
-    Rule`value`(
+    value: Rule(
         Rule.$or(
             [Rule.number],
             [Rule.string],
@@ -96,13 +96,13 @@ const json = Parser(
         ),
         ([value]) => value
     ),
-    Rule`json`(
+    json: Rule(
         /\s*/,
         { value: Rule.value },
         /\s*/,
         ({ value }) => value
     )
-)
+})
 
 fs.write("examples/json-parser-module.mjs", json.module)
 

@@ -191,9 +191,10 @@ export default (input, options) => {
             return error
         }
         const error = new Error("Expected EOF got not that dingus")
-        error.index = last
+        error.index = index
         error.parsed = input.slice(0, last)
         error.remaining = input.slice(last)
+        error.result = value
         return error
     }
 

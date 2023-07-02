@@ -2,16 +2,16 @@ import fs from "fs-jetpack"
 
 import { Parser, Rule } from "../lib/main.mjs"
 
-const nums = Parser(
-    { start: Rule.lists },
-    Rule`lists`(
+const nums = Parser({
+    [Parser.start]: Rule.lists,
+    lists: Rule(
         Rule.$repeat(
             0,
             Rule.numberList
         ),
         ([ lists ]) => lists
     ),
-    Rule`numberList`(
+    numberList: Rule(
         { name: /\w/ },
         ":",
         { n: Rule.number },
@@ -22,16 +22,16 @@ const nums = Parser(
         ),
         { rest: /[\d\s]*/ }
     ),
-    Rule`number`(
+    number: Rule(
         /\d+/,
         ([ n ]) => parseInt(n)
     ),
-    Rule`item`(
+    item: Rule(
         /\s+/,
         Rule.number,
         ([, n]) => n
     )
-)
+})
 
 fs.write("examples/repeat-condition-module.mjs", nums.module)
 
