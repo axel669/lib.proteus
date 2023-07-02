@@ -40,8 +40,7 @@ const linePosition = (input, pos) => {
         col: pos - input.lastIndexOf("\n", pos)
     }
 }
-const $condition2 = ([n]) => n < 4
-const $parse_repeat1 = (input, pos) => {
+const $parse_repeat1 = (input, pos, parentResults) => {
     const results = []
     let loc = pos
     let match = null
@@ -49,12 +48,34 @@ const $parse_repeat1 = (input, pos) => {
     while (true) {
         const startLoc = loc
         const partial = []
-        ;[loc, match] = parse_num(input, loc)
+        ;[loc, match] = parse_numberList(input, loc)
         if (match === none) { location(pos); break }
         partial.push(match)
 
         const partialValue = partial
-        if ($condition2(partialValue, state) !== true) {
+
+        results.push(partialValue)
+    }
+    if (results.length < 0) {
+        return [pos, none]
+    }
+    return [loc, results]
+}
+const $condition3 = ([n], _, prev) => n < prev.n
+const $parse_repeat2 = (input, pos, parentResults) => {
+    const results = []
+    let loc = pos
+    let match = null
+
+    while (true) {
+        const startLoc = loc
+        const partial = []
+        ;[loc, match] = parse_item(input, loc)
+        if (match === none) { location(pos); break }
+        partial.push(match)
+
+        const partialValue = partial
+        if ($condition3(partialValue, state, parentResults) !== true) {
             loc = startLoc
             break
         }
@@ -67,52 +88,91 @@ const $parse_repeat1 = (input, pos) => {
     return [loc, results]
 }
 
-const action_nums = i => i
-const parse_nums = (input, pos) => {
+const action_lists = ([ lists ]) => lists
+const parse_lists = (input, pos) => {
     const results = []
     let loc = pos
     let match = null
 
-    currentRule = "nums"
+    currentRule = "lists"
+
+    ;[loc, match] = $parse_repeat1(input, loc, results)
+    if (match === none) { location(pos); return [pos, none] }
+    results.push(match)
+
+    return [loc, action_lists(results, state, opt)]
+}
+const action_numberList = i => i
+const parse_numberList = (input, pos) => {
+    const results = []
+    let loc = pos
+    let match = null
+
+    currentRule = "numberList"
+
+    ;[loc, match] = consumeRegex(/\w/y, input, loc)
+    if (match === none) { location(pos); return [pos, none] }
+    results.push(match)
+    results.name = match
+
+    ;[loc, match] = consumeString(":", input, loc)
+    if (match === none) { location(pos); return [pos, none] }
+    results.push(match)
+
+    ;[loc, match] = parse_number(input, loc)
+    if (match === none) { location(pos); return [pos, none] }
+    results.push(match)
+    results.n = match
+
+    ;[loc, match] = $parse_repeat2(input, loc, results)
+    if (match === none) { location(pos); return [pos, none] }
+    results.push(match)
+
+    ;[loc, match] = consumeRegex(/[\d\s]*/y, input, loc)
+    if (match === none) { location(pos); return [pos, none] }
+    results.push(match)
+    results.rest = match
+
+    return [loc, action_numberList(results, state, opt)]
+}
+const action_number = ([ n ]) => parseInt(n)
+const parse_number = (input, pos) => {
+    const results = []
+    let loc = pos
+    let match = null
+
+    currentRule = "number"
 
     ;[loc, match] = consumeRegex(/\d+/y, input, loc)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    ;[loc, match] = $parse_repeat1(input, loc)
-    if (match === none) { location(pos); return [pos, none] }
-    results.push(match)
-
-    ;[loc, match] = consumeRegex(/.*/y, input, loc)
-    if (match === none) { location(pos); return [pos, none] }
-    results.push(match)
-
-    return [loc, action_nums(results, state, opt)]
+    return [loc, action_number(results, state, opt)]
 }
-const action_num = ([, n]) => parseInt(n)
-const parse_num = (input, pos) => {
+const action_item = ([, n]) => n
+const parse_item = (input, pos) => {
     const results = []
     let loc = pos
     let match = null
 
-    currentRule = "num"
+    currentRule = "item"
 
     ;[loc, match] = consumeRegex(/\s+/y, input, loc)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    ;[loc, match] = consumeRegex(/\d+/y, input, loc)
+    ;[loc, match] = parse_number(input, loc)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    return [loc, action_num(results, state, opt)]
+    return [loc, action_item(results, state, opt)]
 }
 export default (input, options) => {
     last = 0
     opt = options
     state = {
     }
-    const [index, value] = parse_nums(input, 0)
+    const [index, value] = parse_lists(input, 0)
     if (index !== input.length) {
         if (value === none) {
             const pos = linePosition(input, last)
@@ -130,7 +190,11 @@ export default (input, options) => {
 
             return error
         }
-        return new Error("Expected EOF got not that dingus")
+        const error = new Error("Expected EOF got not that dingus")
+        error.index = last
+        error.parsed = input.slice(0, last)
+        error.remaining = input.slice(last)
+        return error
     }
 
     return value
