@@ -23,7 +23,7 @@ var proteus = (function (exports) {
         parsers[Symbol.for(name)] = condition.toString();
 
         return `
-        if (${name}(partialValue, state) !== true) {
+        if (${name}(partialValue, state, parentResults) !== true) {
             loc = startLoc
             break
         }
@@ -40,7 +40,7 @@ var proteus = (function (exports) {
         ).join("\n\n");
         const conditional = generateCondtional(condition, parsers);
 
-        parsers[Symbol.for(name)] = `(input, pos) => {
+        parsers[Symbol.for(name)] = `(input, pos, parentResults) => {
         const results = []
         let loc = pos
         let match = null
@@ -61,7 +61,7 @@ var proteus = (function (exports) {
         return [loc, results]
     }`;
 
-        return `${name}(input, loc)`
+        return `${name}(input, loc, results)`
     };
     const tokenOr = ({ tokens }, parsers) => {
         const name = `$parse_or${id()}`;
@@ -367,7 +367,11 @@ const linePosition = (input, pos) => {
 
                     return error
                 }
-                return new Error("Expected EOF got not that dingus")
+                const error = new Error("Expected EOF got not that dingus")
+                error.index = last
+                error.parsed = input.slice(0, last)
+                error.remaining = input.slice(last)
+                return error
             }
 
             return value
