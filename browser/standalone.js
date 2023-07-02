@@ -207,30 +207,29 @@ var proteus = (function (exports) {
     };
 
     const Rule = new Proxy(
-        ([name]) =>
-            (...args) => {
-                const [tokens, action] =
-                    (typeof args[args.length - 1] === "function")
-                    ? [args.slice(0, -1), args[args.length - 1]]
-                    : [args, null];
-                return (parsers, actions) => {
-                    const steps = tokens.map(
-                        token => tokenStep(token, parsers)
-                    );
-                    parsers[name] = `(input, pos) => {
-                        const results = []
-                        let loc = pos
-                        let match = null
+        (...args) => {
+            const [tokens, action] =
+                (typeof args[args.length - 1] === "function")
+                ? [args.slice(0, -1), args[args.length - 1]]
+                : [args, null];
+            return (name, parsers, actions) => {
+                const steps = tokens.map(
+                    token => tokenStep(token, parsers)
+                );
+                parsers[name] = `(input, pos) => {
+                    const results = []
+                    let loc = pos
+                    let match = null
 
-                        currentRule = "${name}"
+                    currentRule = "${name}"
 
-                        ${steps.join("\n\n")}
+                    ${steps.join("\n\n")}
 
-                        return [loc, action_${name}(results, state, opt)]
-                    }`;
-                    actions[name] = action;
-                }
-            },
+                    return [loc, action_${name}(results, state, opt)]
+                }`;
+                actions[name] = action;
+            }
+        },
         {
             apply(target, _, args) {
                 return target(...args)
@@ -368,9 +367,10 @@ const linePosition = (input, pos) => {
                     return error
                 }
                 const error = new Error("Expected EOF got not that dingus")
-                error.index = last
-                error.parsed = input.slice(0, last)
-                error.remaining = input.slice(last)
+                error.index = index
+                error.parsed = input.slice(0, index)
+                error.remaining = input.slice(index)
+                error.result = value
                 return error
             }
 
@@ -383,17 +383,18 @@ const linePosition = (input, pos) => {
     */
 
 
-    const parser = (options, ...rules) => {
+    const start = Symbol("Starting Rule");
+    const parser = (ruleMap) => {
         const parsers = {};
         const actions = {};
 
-        for (const rule of rules) {
-            rule(parsers, actions);
+        for (const [name, rule] of Object.entries(ruleMap)) {
+            rule(name, parsers, actions);
         }
 
         const parserSource = compileParser(
             parsers,
-            Symbol.keyFor(options.start),
+            Symbol.keyFor(ruleMap[start]),
             actions
         );
         const genSource = parserSource.join("\nreturn ");
@@ -407,6 +408,7 @@ const linePosition = (input, pos) => {
             module: parserSource.join("\nexport default ")
         }
     };
+    parser.start = start;
 
     exports.Parser = parser;
     exports.Rule = Rule;
