@@ -17,6 +17,12 @@ const consumeRegex = (pattern, input, pos) => {
     }
     return [pattern.lastIndex, match?.[0] ?? null]
 }
+const parse_eof = (input, pos) => {
+    if (pos === input.length) {
+        return [pos, null]
+    }
+    return [pos, none]
+}
 
 let last = 0
 let lastRule = null
@@ -49,19 +55,19 @@ const $parse_repeat2 = (input, pos, parentResults) => {
         const startLoc = loc
         const partial = []
         ;[loc, match] = consumeRegex(/s*/y, input, loc)
-        if (match === none) { location(pos); break }
+        if (match === none) { loc = startLoc; location(pos); break }
         partial.push(match)
 
         ;[loc, match] = consumeString(",", input, loc)
-        if (match === none) { location(pos); break }
+        if (match === none) { loc = startLoc; location(pos); break }
         partial.push(match)
 
         ;[loc, match] = consumeRegex(/\s*/y, input, loc)
-        if (match === none) { location(pos); break }
+        if (match === none) { loc = startLoc; location(pos); break }
         partial.push(match)
 
         ;[loc, match] = parse_value(input, loc)
-        if (match === none) { location(pos); break }
+        if (match === none) { loc = startLoc; location(pos); break }
         partial.push(match)
 
         const partialValue = partial
@@ -101,19 +107,19 @@ const $parse_repeat4 = (input, pos, parentResults) => {
         const startLoc = loc
         const partial = []
         ;[loc, match] = consumeRegex(/s*/y, input, loc)
-        if (match === none) { location(pos); break }
+        if (match === none) { loc = startLoc; location(pos); break }
         partial.push(match)
 
         ;[loc, match] = consumeString(",", input, loc)
-        if (match === none) { location(pos); break }
+        if (match === none) { loc = startLoc; location(pos); break }
         partial.push(match)
 
         ;[loc, match] = consumeRegex(/\s*/y, input, loc)
-        if (match === none) { location(pos); break }
+        if (match === none) { loc = startLoc; location(pos); break }
         partial.push(match)
 
         ;[loc, match] = parse_kvpair(input, loc)
-        if (match === none) { location(pos); break }
+        if (match === none) { loc = startLoc; location(pos); break }
         partial.push(match)
 
         const partialValue = partial

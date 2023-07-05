@@ -30,8 +30,7 @@ const json = Parser({
         { info: Rule.$opt(
             Rule.value,
             /s*/,
-            Rule.$repeat(
-                0,
+            Rule.$repeat(0)(
                 /s*/,
                 ",",
                 /\s*/,
@@ -56,8 +55,7 @@ const json = Parser({
         { info: Rule.$opt(
             Rule.kvpair,
             /s*/,
-            Rule.$repeat(
-                0,
+            Rule.$repeat(0)(
                 /s*/,
                 ",",
                 /\s*/,

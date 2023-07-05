@@ -164,7 +164,7 @@ var proteus = (function (exports) {
             return ""
         }
         if (token.loop === true) {
-            return "if (match === none) { location(pos); break }"
+            return "if (match === none) { loc = startLoc; location(pos); break }"
         }
         return "if (match === none) { location(pos); return [pos, none] }"
     };
@@ -188,7 +188,7 @@ var proteus = (function (exports) {
     };
 
     const helper = {
-        $repeat: (num, ...tokens) => ({
+        $repeat: (num) => (...tokens) => ({
             [Token.marked]: true,
             [Token.repeat]: true,
             count: num,
@@ -262,6 +262,12 @@ const consumeRegex = (pattern, input, pos) => {
         return [pos, none]
     }
     return [pattern.lastIndex, match?.[0] ?? null]
+}
+const parse_eof = (input, pos) => {
+    if (pos === input.length) {
+        return [pos, null]
+    }
+    return [pos, none]
 }
 
 let last = 0

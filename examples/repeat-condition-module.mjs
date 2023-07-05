@@ -17,6 +17,12 @@ const consumeRegex = (pattern, input, pos) => {
     }
     return [pattern.lastIndex, match?.[0] ?? null]
 }
+const parse_eof = (input, pos) => {
+    if (pos === input.length) {
+        return [pos, null]
+    }
+    return [pos, none]
+}
 
 let last = 0
 let lastRule = null
@@ -49,7 +55,7 @@ const $parse_repeat1 = (input, pos, parentResults) => {
         const startLoc = loc
         const partial = []
         ;[loc, match] = parse_numberList(input, loc)
-        if (match === none) { location(pos); break }
+        if (match === none) { loc = startLoc; location(pos); break }
         partial.push(match)
 
         const partialValue = partial
@@ -61,8 +67,20 @@ const $parse_repeat1 = (input, pos, parentResults) => {
     }
     return [loc, results]
 }
-const $condition3 = ([n], _, prev) => n < prev.n
-const $parse_repeat2 = (input, pos, parentResults) => {
+const $parse_or2 = (input, pos) => {
+    let loc = pos
+    let match = null
+
+    ;[loc, match] = consumeRegex(/\s+/y, input, loc)
+    if (match !== none) { return [loc, match] }
+
+    ;[loc, match] = parse_eof(input, loc)
+    if (match !== none) { return [loc, match] }
+
+    return [pos, none]
+}
+const $condition4 = ([n], _, prev) => n < prev.n
+const $parse_repeat3 = (input, pos, parentResults) => {
     const results = []
     let loc = pos
     let match = null
@@ -71,11 +89,11 @@ const $parse_repeat2 = (input, pos, parentResults) => {
         const startLoc = loc
         const partial = []
         ;[loc, match] = parse_item(input, loc)
-        if (match === none) { location(pos); break }
+        if (match === none) { loc = startLoc; location(pos); break }
         partial.push(match)
 
         const partialValue = partial
-        if ($condition3(partialValue, state, parentResults) !== true) {
+        if ($condition4(partialValue, state, parentResults) !== true) {
             loc = startLoc
             break
         }
@@ -97,6 +115,10 @@ const parse_lists = (input, pos) => {
     currentRule = "lists"
 
     ;[loc, match] = $parse_repeat1(input, loc, results)
+    if (match === none) { location(pos); return [pos, none] }
+    results.push(match)
+
+    ;[loc, match] = $parse_or2(input, loc)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
@@ -124,11 +146,11 @@ const parse_numberList = (input, pos) => {
     results.push(match)
     results.n = match
 
-    ;[loc, match] = $parse_repeat2(input, loc, results)
+    ;[loc, match] = $parse_repeat3(input, loc, results)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
 
-    ;[loc, match] = consumeRegex(/[\d\s]*/y, input, loc)
+    ;[loc, match] = consumeRegex(/[\d ]*/y, input, loc)
     if (match === none) { location(pos); return [pos, none] }
     results.push(match)
     results.rest = match
@@ -192,8 +214,8 @@ export default (input, options) => {
         }
         const error = new Error("Expected EOF got not that dingus")
         error.index = index
-        error.parsed = input.slice(0, last)
-        error.remaining = input.slice(last)
+        error.parsed = input.slice(0, index)
+        error.remaining = input.slice(index)
         error.result = value
         return error
     }
