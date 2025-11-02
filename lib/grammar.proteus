@@ -1,0 +1,25 @@
+$ = _ #(rule _)*
+@rule = #(rulename | "$") #(__ ("." name __)? "=" items)+
+
+@items = #(__ item)*
+@item = #"#"? #(string | chars | ruleref | seq | or | join) #("*" | "+" | "?")?
+
+@string
+    .dbl = #{ '"' (stresc | [^"] )* '"' }
+    .sgl = #{ "'" (stresc | [^'] )* "'" }
+@stresc = "\\" [\\rntvbxu'"]
+@chars = #{ "[" (range | ch)+ "]" } #{"i"? "m"?}
+@ch
+    = [^\-\]\\]
+    = "\\" [snwrntvb\]\-\\]
+@range = ch "-" ch
+@ruleref = #name
+@seq = "(" _ #item #items _ ")"
+@or = "(" #item #(__ "|" __ item)+ _ ")"
+@join = "{" _ #item #items _ "}"
+
+@name = #{ [a-z0-9_]i+ }
+@rulename = "@" #name
+
+@_ = [\s]m*
+@__ = [\s]m+
