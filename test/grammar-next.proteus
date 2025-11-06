@@ -1,10 +1,15 @@
-$ = _ #(rule _)*
+---
+console.log(1, 2, 3)
+---
+
+$ = #{ _ "---\n" line* _ "---\n" }? _ #(rule _)*
 @rule = #(rulename | "$") #(__ ("." name __)? "=" items)+
 
 @items = #(__ item)*
-@item
-    .normal = #"#"? #(string | chars | ruleref | seq | or | join) #("*" | "+" | "?")?
-    .negate = "!" #seq
+@item = #"#"? #(string | chars | ruleref | seq | or | join) #("*" | "+" | "?")? #code?
+@code = _ "---" #args "\n" #{ line* } _ "---"
+@args = "(" #{ name (_ "," _ name)* }? ")"
+@line = [^\n]* "\n"
 
 @string
     .dbl = #{ '"' (stresc | [^"] )* '"' }

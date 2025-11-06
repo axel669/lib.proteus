@@ -1,0 +1,38 @@
+$ = #value
+@value = #(string | number | array | object)
+
+@string = #{ '"' (stresc | [^"] )* '"' }
+    ---(str)
+    return JSON.parse(str)
+    ---
+@stresc = "\\" [\\rntvbxu'"]
+
+@number = #{ [0-9]+ ("." [0-9]+)? ("e" ("-" | "+") [0-9]+)? }
+    ---(num)
+    return parseFloat(num)
+    ---
+
+@array = "[" _ #(value _ ("," _ value _)*)? "]"
+    ---(parts)
+    if (parts === null) {
+        return []
+    }
+    return [parts[0], ...parts[2].map(p => p[2])]
+    ---
+
+@object = "{" _ #(pair _ ("," _ pair _)*)? "}"
+    ---(parts)
+    if (parts === null) {
+        return {}
+    }
+    const value = {}
+    value[parts[0][0]] = parts[0][1]
+    for (const rest of parts[2]) {
+        value[rest[2][0]] = rest[2][1]
+    }
+    return value
+    ---
+@pair = #string _ ":" _ #value
+
+@_ = [\s]m*
+@__ = [\s]m+

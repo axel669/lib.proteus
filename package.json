@@ -1,10 +1,14 @@
 {
   "name": "@axel669/proteus",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "",
-  "main": "lib/main.mjs",
+  "main": "lib/main.js",
+  "type": "module",
   "scripts": {
     "build": "rollup -c config/rollup.config.mjs"
+  },
+  "bin": {
+    "proteus": "./lib/cli.js"
   },
   "keywords": [],
   "author": "",
@@ -16,5 +20,8 @@
   "files": [
     "lib/",
     "browser"
-  ]
+  ],
+  "exports": {
+    ".": "./lib/main.js"
+  }
 }
