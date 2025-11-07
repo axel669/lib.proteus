@@ -1,4 +1,5 @@
-export const generate = (tree) => {
+export const generate = (parseInfo) => {
+    const { rules, init } = parseInfo
 
 const counter = {
     matcher: 0,
@@ -46,9 +47,30 @@ const getRegexMatcher = (regex) => {
     }
     return name
 }
-const rule_base = (name, seq) => {
+const actionFunc = (action, count) => {
+    if (action === null) {
+        if (count === 0) {
+            return `() => undefined`
+        }
+        if (count === 1) {
+            return `(value) => value`
+        }
+        const list = Array.from(
+            { length: count },
+            (_, i) => `arg${i}`
+        ).join(", ")
+        return `(${list}) => [${list}]`
+    }
+    return `${action?.args} => {
+        ${action.code}
+    }
+    `
+}
+const rule_base = (name, seq, action) => {
+    console.log(action)
     const args = argList(seq)
     return `
+    const action_${name} = ${actionFunc(action, args.length)}
     const rule_${name} = () => {
         let indexReset = parseIndex
         ${args.map(
@@ -58,7 +80,7 @@ const rule_base = (name, seq) => {
             (item, index) => gen[item.type](item, index)
         ).flat(inf).join(indenter)}
 
-        const value = $sem["${name.replace(/(?<=.)\$(?=.)/, ".")}"](${args.join(", ")})
+        const value = action_${name}(${args.join(", ")})
         return value
     }`
 }
@@ -167,12 +189,12 @@ const repeater = {
 const gen = {
     rule: (def) => {
         if (def.defs.length === 1) {
-            return rule_base(def.name, def.defs[0].seq)
+            return rule_base(def.name, def.defs[0].seq, def.defs[0].action)
         }
         return [
             rule_mbase(def),
             ...def.defs.map(
-                info => rule_base(`${def.name}$${info.name}`, info.seq)
+                info => rule_base(`${def.name}$${info.name}`, info.seq, info.action)
             )
         ].join(indenter)
     },
@@ -279,29 +301,29 @@ const gen = {
     }
 }
 
-const idfuncs = ["id0", "id1"]
-const ruleList = tree.reduce(
-    (list, rule) => {
-        if (rule.defs.length === 1) {
-            const argCount = argList(rule.defs[0].seq).length
-            const idfunc = idfuncs[argCount] ?? "idl"
-            return [...list, [rule.name, idfunc]]
-        }
-        return [
-            ...list,
-            ...rule.defs.map(
-                info => {
-                    const argCount = argList(info.seq).length
-                    const idfunc = idfuncs[argCount] ?? "idl"
-                    return [`${rule.name}.${info.name}`, idfunc]
-                }
-            )
-        ]
-    },
-    []
-)
+// const idfuncs = ["id0", "id1"]
+// const ruleList = tree.reduce(
+//     (list, rule) => {
+//         if (rule.defs.length === 1) {
+//             const argCount = argList(rule.defs[0].seq).length
+//             const idfunc = idfuncs[argCount] ?? "idl"
+//             return [...list, [rule.name, idfunc]]
+//         }
+//         return [
+//             ...list,
+//             ...rule.defs.map(
+//                 info => {
+//                     const argCount = argList(info.seq).length
+//                     const idfunc = idfuncs[argCount] ?? "idl"
+//                     return [`${rule.name}.${info.name}`, idfunc]
+//                 }
+//             )
+//         ]
+//     },
+//     []
+// )
 
-const ruleCode = tree.map(br => gen[br.type](br)).join("")
+const ruleCode = rules.map(br => gen[br.type](br)).join("")
 const matchersCode = Object.values(charMatchers).map(
     ({ name, code }) => `const ${name} = ${code}`
 ).join("\n    ")
@@ -309,23 +331,11 @@ const additionalCode = Object.entries(additionalFuncs).map(
     ([name, func]) => `const ${name} = ${func}`
 ).join("\n    ")
 
-const parser = `const id0 = () => null
-const id1 = i => i
-const idl = (...args) => args
+const parser = `
 const nomatch = Symbol("no match")
 
-const defs = {
-    ${ruleList.map(
-        i => `"${i[0]}": ${i[1]}`
-    ).flat(inf).join(",\n    ")}
-}
-const rules = Object.keys(defs)
-
-const parse = (str, sem) => {
-    const $sem = {}
-    for (const ruleName of rules) {
-        $sem[ruleName] = sem[ruleName] ?? defs[ruleName]
-    }
+const parse = (str, options) => {
+    ${init ?? ""}
     const strmatch = (source) => {
         const l = source.length
         return () => {

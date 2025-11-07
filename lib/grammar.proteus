@@ -4,7 +4,7 @@ $ = _ #(rule _)*
 @items = #(__ item)*
 @item
     .normal = #"#"? #(string | chars | ruleref | seq | or | join) #("*" | "+" | "?")?
-    .negate = "!" #seq
+    .negate = "!" #(seq | ruleref | string)
 
 @string
     .dbl = #{ '"' (stresc | [^"] )* '"' }
@@ -13,7 +13,7 @@ $ = _ #(rule _)*
 @chars = #{ "[" (range | ch)+ "]" } #{"i"? "m"?}
 @ch
     = [^\-\]\\]
-    = "\\" [snwrntvb\]\-\\]
+    = "\\" [snwrntvb\]\-\\\(\)\[\^\$]
 @range = ch "-" ch
 @ruleref = #name
 @seq = "(" _ #item #items _ ")"

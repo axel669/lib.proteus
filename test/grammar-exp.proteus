@@ -1,5 +1,28 @@
+---
+console.log("test")
+---
+
 $ = #init? _ #(rule _)*
+    ---(init, rules)
+    return {
+        init,
+        rules: rules.map(rule => rule[0])
+    }
+    ---
 @rule = #(rulename | "$") #(__ ("." name __)? "=" items action?)+
+    ---(name, defs)
+    return {
+        type: "rule",
+        name,
+        defs: defs.map(
+            (def, index) => ({
+                name: def[1]?.[1] ?? index.toString(),
+                seq: def[3],
+                action: def[4]
+            })
+        )
+    }
+    ---
 
 @delim = _ "---" "\n"?
 @codeLine = [\s]* !"---\n" [^\n]* "\n"
@@ -7,8 +30,14 @@ $ = #init? _ #(rule _)*
 
 @actionDelim = _ "---" #{ "(" [^\)\n]* ")" } "\n"
 @action = #actionDelim #{ codeLine+ } delim
+    ---(args, code)
+    return { args, code }
+    ---
 
 @items = #(__ item)*
+    ---(list)
+    return list.map(item => item[1])
+    ---
 @item
     .normal = #"#"? #(string | chars | ruleref | seq | or | join) #("*" | "+" | "?")?
     .negate = "!" #(seq | ruleref | string)
