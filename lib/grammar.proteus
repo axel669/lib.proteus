@@ -1,24 +1,99 @@
-$ = _ #(rule _)*
-@rule = #(rulename | "$") #(__ ("." name __)? "=" items)+
+---
+console.log("test")
+---
+
+$ = #init? _ #(rule _)*
+    ---(init, rules)
+    return {
+        init,
+        rules: rules.map(rule => rule[0])
+    }
+    ---
+@rule = #(rulename | "$") #(__ ("." name __)? "=" items action?)+
+    ---(name, defs)
+    return {
+        type: "rule",
+        name,
+        defs: defs.map(
+            (def, index) => ({
+                name: def[1]?.[1] ?? index.toString(),
+                seq: def[3],
+                action: def[4]
+            })
+        )
+    }
+    ---
+
+@delim = _ "---" "\n"?
+@codeLine = [\s]* !"---\n" [^\n]* "\n"
+@init = delim #{ codeLine+ } delim
+
+@actionDelim = _ "---" #{ "(" [^\)\n]* ")" } "\n"
+@action = #actionDelim #{ codeLine+ } delim
+    ---(args, code)
+    return { args, code }
+    ---
 
 @items = #(__ item)*
+    ---(list)
+    return list.map(item => item[1])
+    ---
 @item
     .normal = #"#"? #(string | chars | ruleref | seq | or | join) #("*" | "+" | "?")?
+        ---(arg, item, repeat)
+        item.arg = arg !== null
+        item.repeat = repeat
+        return item
+        ---
     .negate = "!" #(seq | ruleref | string)
+        ---(expr)
+        expr.arg = false
+        expr.repeat = null
+        return { type: "negate", expr, arg: false }
+        ---
 
 @string
     .dbl = #{ '"' (stresc | [^"] )* '"' }
+        ---(string)
+        return { type: "string", string }
+        ---
     .sgl = #{ "'" (stresc | [^'] )* "'" }
+        ---(string)
+        return { type: "string", string }
+        ---
 @stresc = "\\" [\\rntvbxu'"]
 @chars = #{ "[" (range | ch)+ "]" } #{"i"? "m"?}
+    ---(regex, flags)
+    return { type: "regex", regex, flags }
+    ---
 @ch
     = [^\-\]\\]
     = "\\" [snwrntvb\]\-\\\(\)\[\^\$]
 @range = ch "-" ch
 @ruleref = #name
+    ---(rule)
+    return { type: "ruleref", rule }
+    ---
 @seq = "(" _ #item #items _ ")"
+    ---(first, rest)
+    return { type: "seq", seq: [first, ...rest] }
+    ---
 @or = "(" #item #(__ "|" __ item)+ _ ")"
+    ---(first, rest)
+    return {
+        type: "or",
+        items: [
+            first,
+            ...rest.map(
+                r => r[3]
+            )
+        ]
+    }
+    ---
 @join = "{" _ #item #items _ "}"
+    ---(first, rest)
+    return { type: "join", seq: [first, ...rest] }
+    ---
 
 @name = #{ [a-z0-9_]i+ }
 @rulename = "@" #name
