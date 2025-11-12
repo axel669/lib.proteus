@@ -1,0 +1,99 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Proteus Grammar",
+    "scopeName": "source.proteus",
+    "patterns": [
+        { "include": "#rule" },
+        { "include": "#sgl-string" },
+        { "include": "#dbl-string" },
+        { "include": "#chars" },
+        { "include": "#js-code" },
+        { "include": "#ops" },
+        { "include": "#subname" },
+        { "include": "#arg" },
+        { "include": "#item" }
+    ],
+    "repository": {
+        "rule": {
+            "patterns": [
+                {
+                    "name": "entity.name.type",
+                    "match": "\\$|@[a-zA-Z_]+"
+                }
+            ]
+        },
+        "dbl-string": {
+            "name": "string.quoted.double.qs",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.qs",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        "sgl-string": {
+            "name": "string.quoted.single.qs",
+            "begin": "'",
+            "end": "'",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.qs",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        "chars": {
+            "name": "string.regexp",
+            "begin": "\\[",
+            "end": "\\]i?m?",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.qs",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        "js-code": {
+            "name": "embedded.javascript",
+            "begin": "---",
+            "end": "---",
+            "patterns": [
+                { "include": "source.js" }
+            ]
+        },
+        "ops": {
+            "patterns": [
+                {
+                    "name": "keyword.operator",
+                    "match": "\\||\\+|\\?|\\*|="
+                }
+            ]
+        },
+        "subname": {
+            "patterns": [
+                {
+                    "name": "constant.language",
+                    "match": "\\.[a-zA-Z_]+"
+                }
+            ]
+        },
+        "arg": {
+            "patterns": [
+                {
+                    "name": "variable.parameter",
+                    "match": "#"
+                }
+            ]
+        },
+        "item": {
+            "patterns": [
+                {
+                    "name": "entity.name.function",
+                    "match": "[a-zA-Z_]+"
+                }
+            ]
+        }
+    }
+}

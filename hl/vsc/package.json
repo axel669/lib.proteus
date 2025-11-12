@@ -1,0 +1,35 @@
+{
+    "name": "@axel669/proteus-syntax",
+    "displayName": "Proteus Syntax Highlighter",
+    "description": "Proteus highlighter for VS Code",
+    "version": "0.1.0",
+    "engines": {
+        "vscode": ">=0.9.0-pre.1"
+    },
+    "publisher": "Axel669",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/axel669/lib.proteus"
+    },
+    "contributes": {
+        "languages": [
+            {
+                "id": "proteus",
+                "aliases": [
+                    "Proteus"
+                ],
+                "extensions": [
+                    ".proteus"
+                ],
+                "configuration": "./proteus.language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "proteus",
+                "scopeName": "source.proteus",
+                "path": "./proteus.tmLanguage.json"
+            }
+        ]
+    }
+}
